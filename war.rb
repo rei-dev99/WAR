@@ -12,7 +12,7 @@ def war
   card_heart = ["ハートの2","ハートの3","ハートの4","ハートの5","ハートの6","ハートの7","ハートの8","ハートの9","ハートの10","ハートのJ","ハートのQ","ハートのK","ハートのA"]
   card_dia = ["ダイヤの2","ダイヤの3","ダイヤの4","ダイヤの5","ダイヤの6","ダイヤの7","ダイヤの8","ダイヤの9","ダイヤの10","ダイヤのJ","ダイヤのQ","ダイヤのK","ダイヤのA"]
 
-  # カードを全て格納してシャッフルする
+  # カードの全てを格納してシャッフルする
   deck = (card_spade + card_club + card_heart + card_dia).shuffle
 
   puts '戦争を開始します。'
@@ -24,22 +24,28 @@ def war
 
   # 引き分け時にカードを保持する
   draw = []
-  # 各プレイヤーの獲得札の保管
-  get_tag_p1 = []
-  get_tag_p2 = []
 
   while true do
-    # プレイヤー1補充
-    if player1.empty?
-      player1.concat(get_tag_p1)
-      get_tag_p1.clear
-      player1.shuffle
-    end
-    # プレイヤー2補充
-    if player2.empty?
-      player2.concat(get_tag_p2)
-      get_tag_p2.clear
-      player2.shuffle
+    # 終了判定！
+    if player1.empty? || player2.empty?
+      p1_total = player1.length
+      p2_total = player2.length
+
+      winner = ''
+      if player1.empty?
+        puts 'プレイヤー1の手札がなくなりました。'
+        p2_total += draw.length
+        winner = 'プレイヤー2が1位、プレイヤー1が2位です。'
+      elsif player2.empty?
+        puts 'プレイヤー2の手札がなくなりました。'
+        p1_total += draw.length
+        winner = 'プレイヤー1が1位、プレイヤー2が2位です。'
+      end
+      puts "プレイヤー1の手札の枚数は#{p1_total}枚です。プレイヤー2の手札の枚数は#{p2_total}枚です。"
+      puts winner
+
+      puts '戦争を終了します。'
+      exit
     end
 
     # 先頭の手札を取り出す
@@ -53,46 +59,18 @@ def war
 
     # player1,player2で配列の0番目にあるカードを展開して強さを比べる
     if cardStrongs(p1) > cardStrongs(p2)
-      puts "プレイヤー1が勝ちました。プレイヤー1はカードを#{2 + draw.length}枚もらいました。"
-      # 獲得札に保管
-      get_tag_p1 << p1
-      get_tag_p1 << p2
-      get_tag_p1 = get_tag_p1 + draw
+      puts "プレイヤー1が勝ちました。プレイヤー1はカードを#{players.length + draw.length}枚もらいました。"
+      player1 << p1 << p2
+      player1.concat(draw)
       draw.clear
     elsif cardStrongs(p1) < cardStrongs(p2)
-      puts "プレイヤー2が勝ちました。プレイヤー2はカードを#{2 + draw.length}枚もらいました。"
-      get_tag_p2 << p1
-      get_tag_p2 << p2
-      get_tag_p2.concat(draw)
+      puts "プレイヤー2が勝ちました。プレイヤー2はカードを#{players.length + draw.length}枚もらいました。"
+      player2 << p1 << p2
+      player2.concat(draw)
       draw.clear
     else
-      draw.push(p1,p2)
+      draw << p1 << p2
       puts '引き分けです。'
-    end
-
-    # 勝敗の判定
-    if player1.empty? || player2.empty?
-      p1_total = player1.length + get_tag_p1.length
-      p2_total = player2.length + get_tag_p2.length
-
-      winner = ''
-      if p1_total < p2_total
-        puts 'プレイヤー1の手札がなくなりました。'
-        p2_total += draw.length
-        winner = 'プレイヤー2が1位、プレイヤー1が2位です。'
-      elsif p1_total > p2_total
-        puts 'プレイヤー2の手札がなくなりました。'
-        p1_total += draw.length
-        winner = 'プレイヤー1が1位、プレイヤー2が2位です。'
-      else
-        # 枚数が同じだった時の処理
-        winner = '引き分けです。'
-      end
-      puts "プレイヤー1の手札の枚数は#{p1_total}枚です。プレイヤー2の手札の枚数は#{p2_total}枚です。"
-      puts winner
-
-      puts '戦争を終了します。'
-      exit
     end
   end
 end
