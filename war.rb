@@ -90,6 +90,10 @@ class Deck
     @deck.shuffle!
   end
 
+  def size
+    @deck.size
+  end
+
   def distribution(players)
     @deck.length.times do |i|
       players[i % players.length].cards << @deck[i]
@@ -163,7 +167,12 @@ class War
     deck = Deck.new(@players.length)
     deck.shuffle
     deck.distribution(@players)
-    puts '', "カード#{@players.length * 13}枚を一人当たり#{@players.length * 13 / @players.length}枚配られました。"
+
+    puts '', "カードは合計で#{deck.size}枚です。"
+    @players.each do |player|
+      puts "#{player.name}のカードは#{player.cards.length}枚です。"
+    end
+
     draw = Zones.new
 
     round = 0
