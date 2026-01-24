@@ -1,103 +1,215 @@
-def war
-  player1 = []
-  player2 = []
-  players = [player1, player2]
+class Player
+  attr_reader :name
+  attr_accessor :cards, :hands
 
-  # 親を決める
-  parent = "player" + (rand(players.length) + 1).to_s
-
-  # カードを52枚用意
-  card_spade = ["スペードの2","スペードの3","スペードの4","スペードの5","スペードの6","スペードの7","スペードの8","スペードの9","スペードの10","スペードのJ","スペードのQ","スペードのK","スペードのA"]
-  card_club = ["クラブの2","クラブの3","クラブの4","クラブの5","クラブの6","クラブの7","クラブの8","クラブの9","クラブの10","クラブのJ","クラブのQ","クラブのK","クラブのA"]
-  card_heart = ["ハートの2","ハートの3","ハートの4","ハートの5","ハートの6","ハートの7","ハートの8","ハートの9","ハートの10","ハートのJ","ハートのQ","ハートのK","ハートのA"]
-  card_dia = ["ダイヤの2","ダイヤの3","ダイヤの4","ダイヤの5","ダイヤの6","ダイヤの7","ダイヤの8","ダイヤの9","ダイヤの10","ダイヤのJ","ダイヤのQ","ダイヤのK","ダイヤのA"]
-
-  # カードの全てを格納してシャッフルする
-  deck = (card_spade + card_club + card_heart + card_dia).shuffle
-
-  puts '戦争を開始します。'
-  # 52個あるカードでループし、均等にプレーヤーに配る
-  (deck.length).times do |i|
-    players[i % players.length] << deck[i]
+  def initialize(name)
+    @name = name
+    @cards = []
+    @hands = nil
   end
-  puts 'カードが配られました。'
 
-  # 引き分け時にカードを保持する
-  draw = []
+  def print_players_card
+    cards.each(&:print_card)
+  end
 
-  while true do
-    # 終了判定！
-    if player1.empty? || player2.empty?
-      p1_total = player1.length
-      p2_total = player2.length
+  def play_card
+    @hands = @cards.shift
+  end
 
-      winner = ''
-      if player1.empty?
-        puts 'プレイヤー1の手札がなくなりました。'
-        p2_total += draw.length
-        winner = 'プレイヤー2が1位、プレイヤー1が2位です。'
-      elsif player2.empty?
-        puts 'プレイヤー2の手札がなくなりました。'
-        p1_total += draw.length
-        winner = 'プレイヤー1が1位、プレイヤー2が2位です。'
+  def show_hand
+    puts "#{@name}のカードは#{@hands.print_card}です。"
+  end
+end
+
+class Card
+  attr_reader :suit, :value, :int_value
+
+  def initialize(suit, value, int_value)
+    @suit = suit
+    @value = value
+    @int_value = int_value
+  end
+
+  def print_card
+    "#{@suit}#{@value}(#{@int_value})"
+  end
+end
+
+class Zones
+  attr_reader :draw
+
+  def initialize
+    @draw = []
+  end
+
+  def clear
+    @draw.clear
+  end
+
+  def size
+    @draw.size
+  end
+
+  def collect(cards)
+    @draw.concat(cards)
+  end
+end
+
+class Deck
+  attr_reader :deck
+
+  def initialize(player_count)
+    @deck = generate_deck(player_count)
+  end
+
+  def generate_deck(player_count)
+    suits =
+      case player_count
+      when 2 then ['♠︎']
+      when 3 then ['♠︎', '♣︎']
+      when 4 then ['♠︎', '♣︎', '❤︎']
+      when 5 then ['♠︎', '♣︎', '❤︎', '♦︎']
+      else        ['♠︎']
       end
-      puts "プレイヤー1の手札の枚数は#{p1_total}枚です。プレイヤー2の手札の枚数は#{p2_total}枚です。"
-      puts winner
+    values = %w[2 3 4 5 6 7 8 9 10 J Q K A]
 
-      puts '戦争を終了します。'
+    new_deck = []
+    suits.each do |s|
+      values.each_with_index do |v, i|
+        new_deck.push(Card.new(s, v, i + 2))
+      end
+    end
+    new_deck
+  end
+
+  def printDeck
+    @deck.each(&:print_card)
+  end
+
+  def shuffle
+    @deck.shuffle!
+  end
+
+  def distribution(players)
+    @deck.length.times do |i|
+      players[i % players.length].cards << @deck[i]
+    end
+  end
+end
+
+class War
+  attr_accessor :players
+
+  def initialize
+    @start = false
+    @players = []
+    @parent = nil
+    @show_cards = {}
+    @ranking = []
+  end
+
+  def setting
+    puts '戦争を開始します。'
+
+    count = nil
+
+    loop do
+      print 'プレイヤーの人数を入力してください（2〜5）: '
+      count = gets.to_i
+
+      if (2..5).include?(count)
+        @start = true
+        break
+      else
+        puts '入力を間違えているのでやり直してください。'
+      end
+    end
+    count.times do |i|
+      print "プレイヤー#{i + 1}の名前を入力してください: "
+      name = gets.chomp
+      @players << Player.new(name)
+    end
+    @parent = @players.sample
+  end
+
+  def check_round(round)
+    if round > 50
+      puts '', "ラウンドが50を超えたので終了します。\n持ってるカードの枚数、脱落順の順位となります。", ''
+
+      sorted_players = @players.sort_by { |player| player.cards.length }
+      all_players = sorted_players.reverse + @ranking.reverse
+
+      rank = 1
+      all_players.each do |player|
+        puts "#{rank}位：#{player.name}はカードを#{player.cards.length}枚持っています。"
+        rank += 1
+      end
+
       exit
     end
+  end
 
-    # 先頭の手札を取り出す
-    p1 = player1.shift
-    p2 = player2.shift
+  def check_loser
+    losers = @players.select { |player| player.cards.empty? }
+    losers.each do |loser|
+      puts "#{loser.name}はカードがなくなり脱退しました。"
+      @ranking << loser
+      @players.delete(loser)
+    end
+  end
 
-    puts '戦争！'
+  def start
+    setting
+    deck = Deck.new(@players.length)
+    deck.shuffle
+    deck.distribution(@players)
+    puts '', "カード#{@players.length * 13}枚を一人当たり#{@players.length * 13 / @players.length}枚配られました。"
+    draw = Zones.new
 
-    puts "プレイヤー1のカードは#{p1}です。"
-    puts "プレイヤー2のカードは#{p2}です。"
+    round = 0
+    loop do
+      round += 1
 
-    # player1,player2で配列の0番目にあるカードを展開して強さを比べる
-    if cardStrongs(p1) > cardStrongs(p2)
-      puts "プレイヤー1が勝ちました。プレイヤー1はカードを#{players.length + draw.length}枚もらいました。"
-      player1 << p1 << p2
-      player1.concat(draw)
-      draw.clear
-    elsif cardStrongs(p1) < cardStrongs(p2)
-      puts "プレイヤー2が勝ちました。プレイヤー2はカードを#{players.length + draw.length}枚もらいました。"
-      player2 << p1 << p2
-      player2.concat(draw)
-      draw.clear
-    else
-      draw << p1 << p2
-      puts '引き分けです。'
+      check_round(round)
+
+      if @players.length == 1
+        @ranking << @players[0]
+        puts '', '戦争を終了します。順位は以下の通りです。', ''
+        @ranking.reverse.each_with_index do |player, i|
+          puts "#{i + 1}位：#{player.name}\n手札の枚数は#{player.cards.length}枚です。", ''
+        end
+        exit
+      end
+
+      @players.each(&:play_card)
+
+      puts '', '戦争！'
+
+      @show_cards.clear
+
+      @players.each do |player|
+        player.show_hand
+        @show_cards[player] = player.hands.int_value
+      end
+
+      max_value = @show_cards.values.max
+      max_count = @show_cards.values.count(max_value)
+      table_cards = @players.map(&:hands)
+
+      if max_count == 1
+        winner = @show_cards.key(max_value)
+        puts "#{winner.name}が勝ちました。#{winner.name}はカードを#{@players.length + draw.size}枚もらいました。"
+        winner.cards.concat(table_cards)
+        winner.cards.concat(draw.draw)
+        draw.clear
+      else
+        draw.collect(table_cards)
+        puts '引き分けです。'
+      end
+      check_loser
     end
   end
 end
 
-# カードの得点取得
-def cardStrongs(card)
-    strongs = {
-        "2" => 2,
-        "3" => 3,
-        "4" => 4,
-        "5" => 5,
-        "6" => 6,
-        "7" => 7,
-        "8" => 8,
-        "9" => 9,
-        "10" => 10,
-        "J" => 11,
-        "Q" => 12,
-        "K" => 13,
-        "A" => 14
-    }
-
-    # カードから数字とアルファベットを取得
-    matches = card.scan(/[A-Z0-9]/)
-    # ハッシュから得点を取得
-    score = strongs[matches.join]
-    score
-end
-
-war
+war = War.new
+war.start
