@@ -8,10 +8,8 @@ class Player
     @hands = nil
   end
 
-  def printPlayersCard
-    cards.each do |c|
-      c.printCard
-    end
+  def print_players_card
+    cards.each(&:print_card)
   end
 
   def play_card
@@ -19,26 +17,26 @@ class Player
   end
 
   def show_hand
-    puts "#{@name}のカードは#{@hands.printCard}です。"
+    puts "#{@name}のカードは#{@hands.print_card}です。"
   end
 end
 
 class Card
-  attr_reader :suit ,:value ,:intValue
+  attr_reader :suit, :value, :int_value
 
-  def initialize(suit, value, intValue)
+  def initialize(suit, value, int_value)
     @suit = suit
     @value = value
-    @intValue = intValue
+    @int_value = int_value
   end
 
-  def printCard
-    "#{@suit}#{@value}(#{@intValue})"
+  def print_card
+    "#{@suit}#{@value}(#{@int_value})"
   end
 end
 
 class Zones
-  attr_accessor :draw
+  attr_reader :draw
 
   def initialize
     @draw = []
@@ -48,8 +46,8 @@ class Zones
     @draw.clear
   end
 
-  def length
-    @draw.length
+  def size
+    @draw.size
   end
 
   def collect(cards)
@@ -61,10 +59,10 @@ class Deck
   attr_reader :deck
 
   def initialize(player_count)
-    @deck = self.generateDeck(player_count)
+    @deck = generate_deck(player_count)
   end
 
-  def generateDeck(player_count)
+  def generate_deck(player_count)
     suits =
       case player_count
       when 2 then ['♠︎']
@@ -73,29 +71,27 @@ class Deck
       when 5 then ['♠︎', '♣︎', '❤︎', '♦︎']
       else        ['♠︎']
       end
-    values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A']
+    values = %w[2 3 4 5 6 7 8 9 10 J Q K A]
 
-    newDeck = []
+    new_deck = []
     suits.each do |s|
       values.each_with_index do |v, i|
-        newDeck.push(Card.new(s, v, i+2))
+        new_deck.push(Card.new(s, v, i + 2))
       end
     end
-    newDeck
+    new_deck
   end
 
   def printDeck
-    @deck.each do |card|
-      card.printCard
-    end
+    @deck.each(&:print_card)
   end
 
-  def shuffleDeck
+  def shuffle
     @deck.shuffle!
   end
 
   def distribution(players)
-    (@deck.length).times do |i|
+    @deck.length.times do |i|
       players[i % players.length].cards << @deck[i]
     end
   end
@@ -105,6 +101,7 @@ class War
   attr_accessor :players
 
   def initialize
+    @start = false
     @players = []
     @parent = nil
     @show_cards = {}
@@ -113,96 +110,103 @@ class War
 
   def setting
     puts '戦争を開始します。'
-    print "プレイヤーの人数を入力してください（2〜5）: "
-    count = gets.to_i
+
+    count = nil
+
+    loop do
+      print 'プレイヤーの人数を入力してください（2〜5）: '
+      count = gets.to_i
+
+      if (2..5).include?(count)
+        @start = true
+        break
+      else
+        puts '入力を間違えているのでやり直してください。'
+      end
+    end
     count.times do |i|
-      print "プレイヤー#{i+1}の名前を入力してください: "
+      print "プレイヤー#{i + 1}の名前を入力してください: "
       name = gets.chomp
       @players << Player.new(name)
     end
     @parent = @players.sample
   end
 
+  def check_round(round)
+    if round > 50
+      puts '', "ラウンドが50を超えたので終了します。\n持ってるカードの枚数、脱落順の順位となります。", ''
+
+      sorted_players = @players.sort_by { |player| player.cards.length }
+      all_players = sorted_players.reverse + @ranking.reverse
+
+      rank = 1
+      all_players.each do |player|
+        puts "#{rank}位：#{player.name}はカードを#{player.cards.length}枚持っています。"
+        rank += 1
+      end
+
+      exit
+    end
+  end
+
+  def check_loser
+    losers = @players.select { |player| player.cards.empty? }
+    losers.each do |loser|
+      puts "#{loser.name}はカードがなくなり脱退しました。"
+      @ranking << loser
+      @players.delete(loser)
+    end
+  end
+
   def start
     setting
     deck = Deck.new(@players.length)
-    deck.shuffleDeck
+    deck.shuffle
     deck.distribution(@players)
-    puts 'カードが配られました。'
+    puts '', "カード#{@players.length * 13}枚を一人当たり#{@players.length * 13 / @players.length}枚配られました。"
     draw = Zones.new
 
     round = 0
-    while true do
-      round = round + 1
-      if round > 50
-        puts ""
-        puts "ラウンドが50を超えたので終了します。\n持ってるカードの枚数、脱落順の順位となります。\n"
-        rank = 1
-        @players.each do |player|
-          puts "#{rank}位：#{player.name}は#{player.cards.length}枚持っています。"
-          rank += 1
-        end
-        @ranking.reverse.each do |player|
-          puts "#{rank}位：#{player.name}は#{player.cards.length}枚持っています。"
-          rank += 1
-        end
-        exit
-      end
+    loop do
+      round += 1
 
-      # 終了判定
+      check_round(round)
+
       if @players.length == 1
         @ranking << @players[0]
-        puts "戦争を終了します。\n順位は以下の通りです。"
+        puts '', '戦争を終了します。順位は以下の通りです。', ''
         @ranking.reverse.each_with_index do |player, i|
-          puts "#{i + 1}位：#{player.name}\n手札の枚数は#{player.cards.length}枚です。"
-          puts ""
+          puts "#{i + 1}位：#{player.name}\n手札の枚数は#{player.cards.length}枚です。", ''
         end
         exit
       end
 
-      @players.each do |player|
-        player.play_card
-      end
+      @players.each(&:play_card)
 
-      puts '戦争！'
+      puts '', '戦争！'
 
-      # カードをハッシュに格納する
       @show_cards.clear
+
       @players.each do |player|
         player.show_hand
-        @show_cards[player] = player.hands.intValue
+        @show_cards[player] = player.hands.int_value
       end
 
-      # 最大値を格納して取得
       max_value = @show_cards.values.max
       max_count = @show_cards.values.count(max_value)
-      # ハッシュのキーを配列にして場にある手札を格納
       table_cards = @players.map(&:hands)
-      puts max_value
-      puts max_count
 
-      # 勝者はカードを全てもらう
       if max_count == 1
         winner = @show_cards.key(max_value)
-        puts "#{winner.name}が勝ちました。#{winner.name}はカードを#{@players.length + draw.length}枚もらいました。"
-        # 勝利したプレイヤーにカードを渡す
+        puts "#{winner.name}が勝ちました。#{winner.name}はカードを#{@players.length + draw.size}枚もらいました。"
         winner.cards.concat(table_cards)
         winner.cards.concat(draw.draw)
         draw.clear
       else
-        # ドローに全てのカードを入れる
         draw.collect(table_cards)
         puts '引き分けです。'
       end
-
-      # カードがなくなったら@rankingに移動
-      losers =  @players.select { |player| player.cards.empty? }
-      losers.each do |loser|
-        puts "#{loser.name}はカードがなくなり脱退しました。"
-        @ranking << loser
-        @players.delete(loser)
-      end
-
+      check_loser
     end
   end
 end
